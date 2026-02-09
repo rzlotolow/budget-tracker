@@ -7,6 +7,7 @@ let categories = [];
 let categorySettings = {};
 let transactions = [];
 let budgets = [];
+let selectedYears = new Set();
 
 const authContainer = document.getElementById('auth-container');
 const appContainer = document.getElementById('app-container');
@@ -504,12 +505,44 @@ window.updateCategoryFlag = async function(category, flag, value) {
    }
 };
 
+function getAvailableYears() {
+   const years = new Set();
+   transactions.forEach(t => {
+       const d = t.date.toDate();
+       years.add(d.getFullYear());
+   });
+   return Array.from(years).sort();
+}
+
+function getLastTwoCompleteMonths() {
+   const today = new Date();
+   const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+   const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+   
+   const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+   const twoMonthsAgoStr = `${twoMonthsAgo.getFullYear()}-${String(twoMonthsAgo.getMonth() + 1).padStart(2, '0')}`;
+   
+   return { current: lastMonthStr, previous: twoMonthsAgoStr };
+}
+
+window.toggleYear = function(year) {
+   if (selectedYears.has(year)) {
+       selectedYears.delete(year);
+   } else {
+       selectedYears.add(year);
+   }
+   renderTrends();
+};
+
 function renderTrends() {
    const content = document.getElementById('trends-content');
    
-   const today = new Date();
-   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-   const prevMonth = `${today.getFullYear()}-${String(today.getMonth()).padStart(2, '0')}`;
+   const availableYears = getAvailableYears();
+   if (selectedYears.size === 0) {
+       availableYears.forEach(y => selectedYears.add(y));
+   }
+   
+   const { current: currentMonth, previous: prevMonth } = getLastTwoCompleteMonths();
    
    const currentMonthTransactions = transactions.filter(t => {
        const d = t.date.toDate();
@@ -531,53 +564,114 @@ function renderTrends() {
        prevByCategory[t.category] = (prevByCategory[t.category] || 0) + t.amount;
    });
    
-   const increases = [];
-   Object.keys(currentByCategory).forEach(cat => {
-       const current = currentByCategory[cat];
+   const allCategories = new Set([...Object.keys(currentByCategory), ...Object.keys(prevByCategory)]);
+   const changes = [];
+   
+   allCategories.forEach(cat => {
+       const current = currentByCategory[cat] || 0;
        const prev = prevByCategory[cat] || 0;
        const change = current - prev;
-       if (change > 0) {
-           increases.push({ category: cat, change, current, prev });
+       
+       if (change !== 0) {
+           let percentChange = 'N/A';
+           if (prev === 0 && current > 0) {
+               percentChange = 'N/A';
+           } else if (prev > 0) {
+               percentChange = Math.round((change / prev) * 100);
+           }
+           
+           changes.push({ category: cat, change, current, prev, percentChange });
        }
    });
-   increases.sort((a, b) => b.change - a.change);
+   
+   changes.sort((a, b) => a.category.localeCompare(b.category));
+   
+   const filteredTransactions = transactions.filter(t => {
+       const d = t.date.toDate();
+       return selectedYears.has(d.getFullYear());
+   });
    
    let totalIncome = 0;
    let totalExpenses = 0;
    let totalSavings = 0;
+   let rogerIncome = 0;
+   let reaganIncome = 0;
+   let bothIncome = 0;
+   let rogerExpense = 0;
+   let reaganExpense = 0;
+   let bothExpense = 0;
    
-   currentMonthTransactions.forEach(t => {
+   filteredTransactions.forEach(t => {
        const settings = categorySettings[t.category];
        if (settings?.isIncome) {
            totalIncome += t.amount;
+           if (t.person === 'Roger') rogerIncome += t.amount;
+           else if (t.person === 'Raegan') reaganIncome += t.amount;
+           else if (t.person === 'Both') bothIncome += t.amount;
        } else {
            totalExpenses += t.amount;
+           if (t.person === 'Roger') rogerExpense += t.amount;
+           else if (t.person === 'Raegan') reaganExpense += t.amount;
+           else if (t.person === 'Both') bothExpense += t.amount;
+           
            if (settings?.isSavings) {
                totalSavings += t.amount;
            }
        }
    });
    
+   const totalIncomeCalc = rogerIncome + reaganIncome + bothIncome;
+   const totalExpenseCalc = rogerExpense + reaganExpense + bothExpense;
+   
+   let rogerIncomePercent = 0;
+   let reaganIncomePercent = 0;
+   if (totalIncomeCalc > 0) {
+       rogerIncomePercent = Math.round(((rogerIncome + 0.5 * bothIncome) / totalIncomeCalc) * 100);
+       reaganIncomePercent = 100 - rogerIncomePercent;
+   }
+   
+   let rogerExpensePercent = 0;
+   let reaganExpensePercent = 0;
+   if (totalExpenseCalc > 0) {
+       rogerExpensePercent = Math.round(((rogerExpense + 0.5 * bothExpense) / totalExpenseCalc) * 100);
+       reaganExpensePercent = 100 - rogerExpensePercent;
+   }
+   
    let html = '<div class="trend-section">';
-   html += '<h2>Month-over-Month Increases</h2>';
-   if (increases.length > 0) {
-       increases.slice(0, 5).forEach(item => {
+   html += '<h2>Month-over-Month Changes</h2>';
+   html += `<p style="color: #666; margin-bottom: 1rem;">${formatMonthYear(currentMonth)} vs ${formatMonthYear(prevMonth)}</p>`;
+   
+   if (changes.length > 0) {
+       changes.forEach(item => {
+           const sign = item.change > 0 ? '+' : '';
+           const colorClass = item.change > 0 ? 'trend-increase' : 'trend-decrease';
+           const percentStr = item.percentChange === 'N/A' ? 'N/A' : `${sign}${item.percentChange}% MoM`;
+           
            html += `<div class="trend-item">`;
-           html += `<span class="trend-label">${item.category}</span>`;
-           html += `<span class="trend-value trend-increase">+$${item.change} ($${item.prev} → $${item.current})</span>`;
+           html += `<span class="trend-label">${item.category}:</span>`;
+           html += `<span class="trend-value ${colorClass}">${sign}$${item.change} ($${item.prev} → $${item.current}) (${percentStr})</span>`;
            html += `</div>`;
        });
    } else {
-       html += '<p>No increases this month</p>';
+       html += '<p>No changes between these months</p>';
    }
    html += '</div>';
    
    html += '<div class="trend-section">';
    html += '<h2>Financial Summary</h2>';
+   html += '<div style="margin-bottom: 1rem;">';
+   availableYears.forEach(year => {
+       const isActive = selectedYears.has(year);
+       html += `<button onclick="toggleYear(${year})" style="margin: 0.25rem; background: ${isActive ? '#4CAF50' : '#ccc'};">${year}</button>`;
+   });
+   html += '</div>';
+   
    html += `<div class="trend-item"><span class="trend-label">Total Income</span><span class="trend-value">$${totalIncome}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Total Expenses</span><span class="trend-value">$${totalExpenses}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Total Savings</span><span class="trend-value">$${totalSavings}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Net (Income - Expenses)</span><span class="trend-value ${totalIncome - totalExpenses >= 0 ? 'trend-decrease' : 'trend-increase'}">$${totalIncome - totalExpenses}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerIncomePercent}% of Income</span><span class="trend-label">Raegan: ${reaganIncomePercent}% of Income</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerExpensePercent}% of Expenses</span><span class="trend-label">Raegan: ${reaganExpensePercent}% of Expenses</span></div>`;
    html += '</div>';
    
    content.innerHTML = html;
