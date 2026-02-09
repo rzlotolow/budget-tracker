@@ -6,9 +6,10 @@
    <meta name="theme-color" content="#4CAF50">
    <meta name="apple-mobile-web-app-capable" content="yes">
    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+   <meta name="mobile-web-app-capable" content="yes">
    <title>Budget Tracker</title>
    <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💰</text></svg>">
+   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💰</text></svg>">
    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -33,6 +34,11 @@
        </nav>
 
        <div id="add-tab" class="tab-content active">
+           <div style="margin-bottom: 1rem;">
+               <button type="button" id="import-csv-btn" style="background: #2196F3; width: 100%;">📁 Import CSV</button>
+               <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+           </div>
+           
            <form id="transaction-form">
                <label>Date</label>
                <input type="date" id="transaction-date" required>
@@ -62,6 +68,14 @@
 
                <button type="submit">Add Transaction</button>
            </form>
+           
+           <div id="import-preview" style="display: none; margin-top: 2rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+               <h3>Import Preview</h3>
+               <p id="preview-count"></p>
+               <div id="preview-list" style="max-height: 300px; overflow-y: auto; margin: 1rem 0;"></div>
+               <button type="button" id="confirm-import-btn" style="background: #4CAF50; margin-right: 0.5rem;">Import All</button>
+               <button type="button" id="cancel-import-btn" style="background: #f44336;">Cancel</button>
+           </div>
        </div>
 
        <div id="history-tab" class="tab-content">
