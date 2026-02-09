@@ -783,14 +783,20 @@ function parseCSV(csv) {
        const line = lines[i].trim();
        if (!line) continue;
        
-       const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+       let parts;
+       if (line.includes('\t')) {
+           parts = line.split('\t').map(p => p.trim());
+       } else {
+           parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+       }
        
        if (parts.length < 5) continue;
        
        const category = parts[0];
        const dateStr = parts[1];
        const place = parts[2];
-       const amount = parseInt(parts[3]) || 0;
+       const amountStr = parts[3].replace(/[$,]/g, '');
+       const amount = Math.round(parseFloat(amountStr) || 0);
        const person = parts[4];
        
        if (!category || !dateStr || !place || !person) continue;
