@@ -118,7 +118,7 @@ function setupTransactionForm() {
            date: date,
            category: category,
            place: document.getElementById('transaction-place').value.trim(),
-           amount: parseInt(document.getElementById('transaction-amount').value) || 0,
+           amount: parseFloat(document.getElementById('transaction-amount').value) || 0,
            person: document.getElementById('transaction-person').value,
            notes: document.getElementById('transaction-notes').value.trim(),
            is_deleted: false,
@@ -476,7 +476,7 @@ function renderBudgetForMonth(selectedMonth) {
 }
 
 window.updateBudgetAmount = async function(category, month, value) {
-   const amount = parseInt(value) || 0;
+   const amount = parseFloat(value) || 0;
    const existing = budgets.find(b => b.category === category && b.month === month);
    
    try {
@@ -796,7 +796,7 @@ function parseCSV(csv) {
        const dateStr = parts[1];
        const place = parts[2];
        const amountStr = parts[3].replace(/[$,]/g, '');
-       const amount = Math.round(parseFloat(amountStr) || 0);
+       const amount = parseFloat(amountStr) || 0;
        const person = parts[4];
        
        if (!category || !dateStr || !place || !person) continue;
