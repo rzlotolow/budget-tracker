@@ -2,6 +2,10 @@ import { auth, db } from './firebase-config.js';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, orderBy, getDocs, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
+function formatMoney(amount) {
+   return parseFloat(amount).toFixed(2);
+}
+
 let currentUser = null;
 let categories = [];
 let categorySettings = {};
@@ -304,11 +308,11 @@ function renderHistoryForMonth(selectedMonth) {
        
        let budgetText = '';
        if (budget !== undefined) {
-           budgetText = ` (Budget: $${budget})`;
+           budgetText = ` (Budget: $${formatMoney(budget)})`;
        }
        
        html += `<div class="category-group">`;
-       html += `<h3><span>${category}</span><span class="category-total">$${total}${budgetText}</span></h3>`;
+       html += `<h3><span>${category}</span><span class="category-total">$${formatMoney(total)}${budgetText}</span></h3>`;
        
        items.sort((a, b) => b.date.toDate() - a.date.toDate()).forEach(t => {
            const date = t.date.toDate();
@@ -320,7 +324,7 @@ function renderHistoryForMonth(selectedMonth) {
            if (t.notes) html += `<div class="transaction-notes">${t.notes}</div>`;
            html += `</div>`;
            html += `<div class="transaction-right">`;
-           html += `<div class="transaction-amount">$${t.amount}</div>`;
+           html += `<div class="transaction-amount">$${formatMoney(t.amount)}</div>`;
            html += `<button class="delete-btn" onclick="deleteTransaction('${t.id}')">Delete</button>`;
            html += `</div>`;
            html += `</div>`;
@@ -362,10 +366,8 @@ function calculate6MonthAvg(category) {
    if (completedMonths === 0) return 0;
    
    const total = Object.values(monthTotals).reduce((sum, val) => sum + val, 0);
-   return Math.round(total / completedMonths);
+   return total / completedMonths;
 }
-
-
 
 
 function renderBudget() {
@@ -465,9 +467,9 @@ function renderBudgetForMonth(selectedMonth) {
        html += `<td>${category}</td>`;
        html += `<td><input type="checkbox" ${settings.isSavings ? 'checked' : ''} onchange="updateCategoryFlag('${category}', 'isSavings', this.checked)"></td>`;
        html += `<td><input type="checkbox" ${settings.isIncome ? 'checked' : ''} onchange="updateCategoryFlag('${category}', 'isIncome', this.checked)"></td>`;
-       html += `<td>$${avg}</td>`;
-       html += `<td><input type="number" value="${budget?.amount || 0}" onchange="updateBudgetAmount('${category}', '${selectedMonth}', this.value)"></td>`;
-       html += `<td>$${actual}</td>`;
+       html += `<td>$${formatMoney(avg)}</td>`;
+       html += `<td><input type="number" step="0.01" value="${budget?.amount || 0}" onchange="updateBudgetAmount('${category}', '${selectedMonth}', this.value)"></td>`;
+       html += `<td>$${formatMoney(actual)}</td>`;
        html += '</tr>';
    });
    
@@ -653,7 +655,7 @@ function renderTrends() {
            
            html += `<div class="trend-item">`;
            html += `<span class="trend-label">${item.category}:</span>`;
-           html += `<span class="trend-value ${colorClass}">${sign}$${item.change} ($${item.prev} → $${item.current}) (${percentStr})</span>`;
+           html += `<span class="trend-value ${colorClass}">${sign}$${formatMoney(Math.abs(item.change))} ($${formatMoney(item.prev)} → $${formatMoney(item.current)}) (${percentStr})</span>`;
            html += `</div>`;
        });
    } else {
@@ -670,18 +672,16 @@ function renderTrends() {
    });
    html += '</div>';
    
-   html += `<div class="trend-item"><span class="trend-label">Total Income</span><span class="trend-value">$${totalIncome}</span></div>`;
-   html += `<div class="trend-item"><span class="trend-label">Total Expenses</span><span class="trend-value">$${totalExpenses}</span></div>`;
-   html += `<div class="trend-item"><span class="trend-label">Total Savings</span><span class="trend-value">$${totalSavings}</span></div>`;
-   html += `<div class="trend-item"><span class="trend-label">Net (Income - Expenses)</span><span class="trend-value ${totalIncome - totalExpenses >= 0 ? 'trend-decrease' : 'trend-increase'}">$${totalIncome - totalExpenses}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Total Income</span><span class="trend-value">$${formatMoney(totalIncome)}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Total Expenses</span><span class="trend-value">$${formatMoney(totalExpenses)}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Total Savings</span><span class="trend-value">$${formatMoney(totalSavings)}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Net (Income - Expenses)</span><span class="trend-value ${totalIncome - totalExpenses >= 0 ? 'trend-decrease' : 'trend-increase'}">$${formatMoney(totalIncome - totalExpenses)}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerIncomePercent}% of Income</span><span class="trend-label">Raegan: ${reaganIncomePercent}% of Income</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerExpensePercent}% of Expenses</span><span class="trend-label">Raegan: ${reaganExpensePercent}% of Expenses</span></div>`;
    html += '</div>';
    
    content.innerHTML = html;
 }
-
-
 
 
 
@@ -719,7 +719,7 @@ function setupCSVImport() {
            let html = '<div style="font-size: 0.9rem;">';
            parsedTransactions.slice(0, 10).forEach(t => {
                html += `<div style="padding: 0.5rem; border-bottom: 1px solid #eee;">`;
-               html += `${t.date.toLocaleDateString()} - ${t.category} - ${t.place} - $${t.amount} - ${t.person}`;
+               html += `${t.date.toLocaleDateString()} - ${t.category} - ${t.place} - $${formatMoney(t.amount)} - ${t.person}`;
                html += `</div>`;
            });
            if (parsedTransactions.length > 10) {
