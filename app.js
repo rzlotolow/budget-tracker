@@ -790,7 +790,12 @@ function parseCSV(csv) {
            parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
        }
        
-       if (parts.length < 5) continue;
+       parts = parts.filter(p => p.length > 0);
+       
+       if (parts.length < 5) {
+           console.log('Skipping line (not enough columns):', line);
+           continue;
+       }
        
        const category = parts[0];
        const dateStr = parts[1];
@@ -799,19 +804,31 @@ function parseCSV(csv) {
        const amount = parseFloat(amountStr) || 0;
        const person = parts[4];
        
-       if (!category || !dateStr || !place || !person) continue;
-       
-       let date;
-       if (dateStr.includes('/')) {
-           const [month, day, year] = dateStr.split('/');
-           date = new Date(year, month - 1, day);
-       } else if (dateStr.includes('-')) {
-           date = new Date(dateStr + 'T00:00:00');
-       } else {
+       if (!category || !dateStr || !place || !person) {
+           console.log('Skipping line (missing data):', line);
            continue;
        }
        
-       if (isNaN(date.getTime())) continue;
+       if (person !== 'Roger' && person !== 'Raegan' && person !== 'Both') {
+           console.log('Skipping line (invalid person):', person, line);
+           continue;
+       }
+       
+       let date;
+       if (dateStr.includes('/')) {
+           const dateParts = dateStr.split('/');
+           if (dateParts.length === 3) {
+               const [month, day, year] = dateParts;
+               date = new Date(year, month - 1, day);
+           }
+       } else if (dateStr.includes('-')) {
+           date = new Date(dateStr + 'T00:00:00');
+       }
+       
+       if (!date || isNaN(date.getTime())) {
+           console.log('Skipping line (invalid date):', dateStr, line);
+           continue;
+       }
        
        transactions.push({
            category,
@@ -822,5 +839,6 @@ function parseCSV(csv) {
        });
    }
    
+   console.log(`Successfully parsed ${transactions.length} transactions`);
    return transactions;
 }
