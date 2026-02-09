@@ -3,12 +3,12 @@ import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const firebaseConfig = {
-   apiKey: "YOUR_API_KEY",
-   authDomain: "YOUR_AUTH_DOMAIN",
-   projectId: "YOUR_PROJECT_ID",
-   storageBucket: "YOUR_STORAGE_BUCKET",
-   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-   appId: "YOUR_APP_ID"
+   apiKey: "AIzaSyBNpinIRnongANtCDKtT2tAyE1IQhLpNiU",
+   authDomain: "budget-tracker-ce396.firebaseapp.com",
+   projectId: "budget-tracker-ce396",
+   storageBucket: "budget-tracker-ce396.firebasestorage.app",
+   messagingSenderId: "248018551442",
+   appId: "1:248018551442:web:9c3395587d1ff7d7971c4b"
 };
 
 const app = initializeApp(firebaseConfig);
