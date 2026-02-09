@@ -224,6 +224,8 @@ function renderHistory() {
    
    const months = getAvailableMonths();
    
+   const currentSelection = monthSelect.value;
+   
    monthSelect.innerHTML = '';
    months.forEach((month, index) => {
        const option = document.createElement('option');
@@ -233,7 +235,7 @@ function renderHistory() {
        monthSelect.appendChild(option);
    });
    
-   const selectedMonth = monthSelect.value || (months.length > 0 ? months[0] : null);
+   const selectedMonth = currentSelection || (months.length > 0 ? months[0] : null);
    
    if (!selectedMonth) {
        content.innerHTML = '<div class="empty-state"><h3>No transactions yet</h3><p>Add your first transaction to get started!</p></div>';
@@ -241,7 +243,16 @@ function renderHistory() {
    }
    
    monthSelect.value = selectedMonth;
-   monthSelect.onchange = () => renderHistory();
+   
+   monthSelect.onchange = (e) => {
+       renderHistoryForMonth(e.target.value);
+   };
+   
+   renderHistoryForMonth(selectedMonth);
+}
+
+function renderHistoryForMonth(selectedMonth) {
+   const content = document.getElementById('history-content');
    
    const [year, month] = selectedMonth.split('-').map(Number);
    const monthTransactions = transactions.filter(t => {
@@ -358,6 +369,8 @@ function renderBudget() {
    const nextMonth = `${today.getFullYear()}-${String(today.getMonth() + 2).padStart(2, '0')}`;
    if (!months.includes(nextMonth)) months.unshift(nextMonth);
    
+   const currentSelection = monthSelect.value;
+   
    monthSelect.innerHTML = '';
    months.forEach((month, index) => {
        const option = document.createElement('option');
@@ -367,7 +380,7 @@ function renderBudget() {
        monthSelect.appendChild(option);
    });
    
-   const selectedMonth = monthSelect.value || (months.length > 0 ? months[0] : null);
+   const selectedMonth = currentSelection || (months.length > 0 ? months[0] : null);
    
    if (!selectedMonth) {
        content.innerHTML = '<div class="empty-state"><h3>No data yet</h3></div>';
@@ -375,7 +388,16 @@ function renderBudget() {
    }
    
    monthSelect.value = selectedMonth;
-   monthSelect.onchange = () => renderBudget();
+   
+   monthSelect.onchange = (e) => {
+       renderBudgetForMonth(e.target.value);
+   };
+   
+   renderBudgetForMonth(selectedMonth);
+}
+
+function renderBudgetForMonth(selectedMonth) {
+   const content = document.getElementById('budget-content');
    
    const [year, month] = selectedMonth.split('-').map(Number);
    const monthTransactions = transactions.filter(t => {
