@@ -46,6 +46,7 @@ function initApp() {
    loadTransactions();
    loadBudgets();
    setDefaultDate();
+   setupCSVImport();
 }
 
 function setupTabs() {
@@ -364,6 +365,9 @@ function calculate6MonthAvg(category) {
    return Math.round(total / completedMonths);
 }
 
+
+
+
 function renderBudget() {
    const monthSelect = document.getElementById('budget-month-select');
    const content = document.getElementById('budget-content');
@@ -675,4 +679,142 @@ function renderTrends() {
    html += '</div>';
    
    content.innerHTML = html;
+}
+
+
+
+
+
+function setupCSVImport() {
+   const importBtn = document.getElementById('import-csv-btn');
+   const fileInput = document.getElementById('csv-file-input');
+   const previewDiv = document.getElementById('import-preview');
+   const previewCount = document.getElementById('preview-count');
+   const previewList = document.getElementById('preview-list');
+   const confirmBtn = document.getElementById('confirm-import-btn');
+   const cancelBtn = document.getElementById('cancel-import-btn');
+   
+   let parsedTransactions = [];
+   
+   importBtn.addEventListener('click', () => {
+       fileInput.click();
+   });
+   
+   fileInput.addEventListener('change', (e) => {
+       const file = e.target.files[0];
+       if (!file) return;
+       
+       const reader = new FileReader();
+       reader.onload = (event) => {
+           const csv = event.target.result;
+           parsedTransactions = parseCSV(csv);
+           
+           if (parsedTransactions.length === 0) {
+               alert('No valid transactions found in CSV');
+               return;
+           }
+           
+           previewCount.textContent = `Found ${parsedTransactions.length} transactions`;
+           
+           let html = '<div style="font-size: 0.9rem;">';
+           parsedTransactions.slice(0, 10).forEach(t => {
+               html += `<div style="padding: 0.5rem; border-bottom: 1px solid #eee;">`;
+               html += `${t.date.toLocaleDateString()} - ${t.category} - ${t.place} - $${t.amount} - ${t.person}`;
+               html += `</div>`;
+           });
+           if (parsedTransactions.length > 10) {
+               html += `<div style="padding: 0.5rem; color: #666;">...and ${parsedTransactions.length - 10} more</div>`;
+           }
+           html += '</div>';
+           
+           previewList.innerHTML = html;
+           previewDiv.style.display = 'block';
+       };
+       reader.readAsText(file);
+   });
+   
+   confirmBtn.addEventListener('click', async () => {
+       confirmBtn.disabled = true;
+       confirmBtn.textContent = 'Importing...';
+       
+       try {
+           for (const transaction of parsedTransactions) {
+               if (!categories.includes(transaction.category)) {
+                   await addCategory(transaction.category);
+               }
+               
+               await addDoc(collection(db, 'transactions'), {
+                   userId: currentUser.uid,
+                   date: transaction.date,
+                   category: transaction.category,
+                   place: transaction.place,
+                   amount: transaction.amount,
+                   person: transaction.person,
+                   notes: '',
+                   is_deleted: false,
+                   created_at: new Date()
+               });
+           }
+           
+           alert(`Successfully imported ${parsedTransactions.length} transactions!`);
+           previewDiv.style.display = 'none';
+           fileInput.value = '';
+           parsedTransactions = [];
+       } catch (error) {
+           alert('Error importing: ' + error.message);
+       } finally {
+           confirmBtn.disabled = false;
+           confirmBtn.textContent = 'Import All';
+       }
+   });
+   
+   cancelBtn.addEventListener('click', () => {
+       previewDiv.style.display = 'none';
+       fileInput.value = '';
+       parsedTransactions = [];
+   });
+}
+
+function parseCSV(csv) {
+   const lines = csv.split('\n').filter(line => line.trim());
+   const transactions = [];
+   
+   for (let i = 1; i < lines.length; i++) {
+       const line = lines[i].trim();
+       if (!line) continue;
+       
+       const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+       
+       if (parts.length < 5) continue;
+       
+       const category = parts[0];
+       const dateStr = parts[1];
+       const place = parts[2];
+       const amount = parseInt(parts[3]) || 0;
+       const person = parts[4];
+       
+       if (!category || !dateStr || !place || !person) continue;
+       
+       let date;
+       if (dateStr.includes('/')) {
+           const [month, day, year] = dateStr.split('/');
+           date = new Date(year, month - 1, day);
+       } else if (dateStr.includes('-')) {
+           date = new Date(dateStr + 'T00:00:00');
+       } else {
+           continue;
+       }
+       
+       if (isNaN(date.getTime())) continue;
+       
+       transactions.push({
+           category,
+           date,
+           place,
+           amount,
+           person
+       });
+   }
+   
+   return transactions;
 }
