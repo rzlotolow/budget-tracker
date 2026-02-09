@@ -1,9 +1,10 @@
 import { auth, db } from './firebase-config.js';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, orderBy, getDocs, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 let currentUser = null;
 let categories = [];
+let categorySettings = {};
 let transactions = [];
 let budgets = [];
 
@@ -40,6 +41,7 @@ function initApp() {
    setupTabs();
    setupTransactionForm();
    loadCategories();
+   loadCategorySettings();
    loadTransactions();
    loadBudgets();
    setDefaultDate();
@@ -141,6 +143,12 @@ async function addCategory(category) {
            name: category,
            created_at: new Date()
        });
+       await setDoc(doc(db, 'categorySettings', `${currentUser.uid}_${category}`), {
+           userId: currentUser.uid,
+           category: category,
+           isSavings: false,
+           isIncome: false
+       });
    } catch (error) {
        console.error('Error adding category:', error);
    }
@@ -151,6 +159,20 @@ function loadCategories() {
    onSnapshot(q, (snapshot) => {
        categories = snapshot.docs.map(doc => doc.data().name).sort();
        updateCategoryDropdown();
+   });
+}
+
+function loadCategorySettings() {
+   const q = query(collection(db, 'categorySettings'), where('userId', '==', currentUser.uid));
+   onSnapshot(q, (snapshot) => {
+       categorySettings = {};
+       snapshot.docs.forEach(doc => {
+           const data = doc.data();
+           categorySettings[data.category] = {
+               isSavings: data.isSavings || false,
+               isIncome: data.isIncome || false
+           };
+       });
    });
 }
 
@@ -278,19 +300,12 @@ function renderHistoryForMonth(selectedMonth) {
        const total = items.reduce((sum, t) => sum + t.amount, 0);
        const budget = budgetMap[category];
        
-       let highlightClass = '';
        let budgetText = '';
        if (budget !== undefined) {
-           if (total <= budget) {
-               highlightClass = 'budget-met';
-               budgetText = ` (Budget: $${budget} ✓)`;
-           } else {
-               highlightClass = 'budget-exceeded';
-               budgetText = ` (Budget: $${budget} ✗)`;
-           }
+           budgetText = ` (Budget: $${budget})`;
        }
        
-       html += `<div class="category-group ${highlightClass}">`;
+       html += `<div class="category-group">`;
        html += `<h3><span>${category}</span><span class="category-total">$${total}${budgetText}</span></h3>`;
        
        items.sort((a, b) => b.date.toDate() - a.date.toDate()).forEach(t => {
@@ -415,9 +430,7 @@ function renderBudgetForMonth(selectedMonth) {
    monthBudgets.forEach(b => {
        budgetData[b.category] = {
            id: b.id,
-           amount: b.amount,
-           isSavings: b.isSavings || false,
-           isIncome: b.isIncome || false
+           amount: b.amount
        };
    });
    
@@ -436,6 +449,7 @@ function renderBudgetForMonth(selectedMonth) {
        const budget = budgetData[category];
        const actual = actualByCategory[category] || 0;
        const avg = calculate6MonthAvg(category);
+       const settings = categorySettings[category] || { isSavings: false, isIncome: false };
        
        let rowClass = '';
        if (budget && budget.amount > 0 && actual > 0) {
@@ -444,8 +458,8 @@ function renderBudgetForMonth(selectedMonth) {
        
        html += `<tr class="${rowClass}">`;
        html += `<td>${category}</td>`;
-       html += `<td><input type="checkbox" ${budget?.isSavings ? 'checked' : ''} onchange="updateBudgetFlag('${category}', '${selectedMonth}', 'isSavings', this.checked)"></td>`;
-       html += `<td><input type="checkbox" ${budget?.isIncome ? 'checked' : ''} onchange="updateBudgetFlag('${category}', '${selectedMonth}', 'isIncome', this.checked)"></td>`;
+       html += `<td><input type="checkbox" ${settings.isSavings ? 'checked' : ''} onchange="updateCategoryFlag('${category}', 'isSavings', this.checked)"></td>`;
+       html += `<td><input type="checkbox" ${settings.isIncome ? 'checked' : ''} onchange="updateCategoryFlag('${category}', 'isIncome', this.checked)"></td>`;
        html += `<td>$${avg}</td>`;
        html += `<td><input type="number" value="${budget?.amount || 0}" onchange="updateBudgetAmount('${category}', '${selectedMonth}', this.value)"></td>`;
        html += `<td>$${actual}</td>`;
@@ -469,8 +483,6 @@ window.updateBudgetAmount = async function(category, month, value) {
                category,
                month,
                amount,
-               isSavings: false,
-               isIncome: false,
                created_at: new Date()
            });
        }
@@ -479,25 +491,16 @@ window.updateBudgetAmount = async function(category, month, value) {
    }
 };
 
-window.updateBudgetFlag = async function(category, month, flag, value) {
-   const existing = budgets.find(b => b.category === category && b.month === month);
-   
+window.updateCategoryFlag = async function(category, flag, value) {
    try {
-       if (existing) {
-           await updateDoc(doc(db, 'budgets', existing.id), { [flag]: value });
-       } else {
-           await addDoc(collection(db, 'budgets'), {
-               userId: currentUser.uid,
-               category,
-               month,
-               amount: 0,
-               isSavings: flag === 'isSavings' ? value : false,
-               isIncome: flag === 'isIncome' ? value : false,
-               created_at: new Date()
-           });
-       }
+       await setDoc(doc(db, 'categorySettings', `${currentUser.uid}_${category}`), {
+           userId: currentUser.uid,
+           category: category,
+           [flag]: value,
+           [flag === 'isSavings' ? 'isIncome' : 'isSavings']: categorySettings[category]?.[flag === 'isSavings' ? 'isIncome' : 'isSavings'] || false
+       }, { merge: true });
    } catch (error) {
-       alert('Error updating budget: ' + error.message);
+       alert('Error updating category: ' + error.message);
    }
 };
 
@@ -539,19 +542,17 @@ function renderTrends() {
    });
    increases.sort((a, b) => b.change - a.change);
    
-   const currentBudgets = budgets.filter(b => b.month === currentMonth);
-   
    let totalIncome = 0;
    let totalExpenses = 0;
    let totalSavings = 0;
    
    currentMonthTransactions.forEach(t => {
-       const budgetInfo = currentBudgets.find(b => b.category === t.category);
-       if (budgetInfo?.isIncome) {
+       const settings = categorySettings[t.category];
+       if (settings?.isIncome) {
            totalIncome += t.amount;
        } else {
            totalExpenses += t.amount;
-           if (budgetInfo?.isSavings) {
+           if (settings?.isSavings) {
                totalSavings += t.amount;
            }
        }
