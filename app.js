@@ -784,10 +784,12 @@ function parseCSV(csv) {
        if (!line) continue;
        
        let parts;
+       
        if (line.includes('\t')) {
            parts = line.split('\t').map(p => p.trim());
        } else {
-           parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+           const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+           parts = line.split(regex).map(p => p.trim().replace(/^"|"$/g, ''));
        }
        
        parts = parts.filter(p => p.length > 0);
@@ -800,7 +802,7 @@ function parseCSV(csv) {
        const category = parts[0];
        const dateStr = parts[1];
        const place = parts[2];
-       const amountStr = parts[3].replace(/[$,]/g, '');
+       const amountStr = parts[3].replace(/[$,"]/g, '');
        const amount = parseFloat(amountStr) || 0;
        const person = parts[4];
        
