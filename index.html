@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <meta name="theme-color" content="#4CAF50">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+   <title>Budget Tracker</title>
+   <link rel="manifest" href="manifest.json">
+   <link rel="apple-touch-icon" href="icon-192.png">
+   <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+   <div id="auth-container">
+       <div class="auth-card">
+           <h1>💰 Budget Tracker</h1>
+           <button id="sign-in-btn">Sign in with Google</button>
+       </div>
+   </div>
+
+   <div id="app-container" style="display: none;">
+       <header>
+           <h1>💰 Budget Tracker</h1>
+           <button id="sign-out-btn">Sign Out</button>
+       </header>
+
+       <nav class="tabs">
+           <button class="tab-btn active" data-tab="add">Add</button>
+           <button class="tab-btn" data-tab="history">History</button>
+           <button class="tab-btn" data-tab="budget">Budget</button>
+           <button class="tab-btn" data-tab="trends">Trends</button>
+       </nav>
+
+       <div id="add-tab" class="tab-content active">
+           <form id="transaction-form">
+               <label>Date</label>
+               <input type="date" id="transaction-date" required>
+
+               <label>Category</label>
+               <select id="transaction-category" required>
+                   <option value="">Select Category</option>
+                   <option value="__new__">+ Add New Category</option>
+               </select>
+               <input type="text" id="new-category-input" style="display: none;" placeholder="Enter new category">
+
+               <label>Place</label>
+               <input type="text" id="transaction-place" required>
+
+               <label>Amount</label>
+               <input type="number" id="transaction-amount" step="1" value="0" required>
+
+               <label>Person</label>
+               <select id="transaction-person" required>
+                   <option value="Roger">Roger</option>
+                   <option value="Raegan">Raegan</option>
+                   <option value="Both">Both</option>
+               </select>
+
+               <label>Notes (Optional)</label>
+               <textarea id="transaction-notes"></textarea>
+
+               <button type="submit">Add Transaction</button>
+           </form>
+       </div>
+
+       <div id="history-tab" class="tab-content">
+           <div class="month-selector">
+               <select id="history-month-select"></select>
+           </div>
+           <div id="history-content"></div>
+       </div>
+
+       <div id="budget-tab" class="tab-content">
+           <div id="budget-reminder"></div>
+           <div class="month-selector">
+               <select id="budget-month-select"></select>
+           </div>
+           <div id="budget-content"></div>
+       </div>
+
+       <div id="trends-tab" class="tab-content">
+           <div id="trends-content"></div>
+       </div>
+   </div>
+
+   <script type="module" src="firebase-config.js"></script>
+   <script type="module" src="app.js"></script>
+</body>
+</html>
