@@ -668,14 +668,17 @@ function renderTrends() {
        let dollarChange = 'N/A';
        let percentChange = 'N/A';
        
-       if (prev > 0 && current > 0) {
-           const change = current - prev;
-           const sign = change >= 0 ? '+' : '';
-           dollarChange = `${sign}$${formatMoney(Math.abs(change))}`;
-           
-           const pct = ((change / prev) * 100);
-           percentChange = `${sign}${Math.round(pct)}%`;
-       } else if (prev === 0 && current === 0) {
+if (prev > 0 && current > 0) {
+   const change = current - prev;
+   const sign = change > 0 ? '+' : (change < 0 ? '-' : '');
+   dollarChange = `${sign}$${formatMoney(Math.abs(change))}`;
+   
+   const pct = ((change / prev) * 100);
+   const pctSign = pct > 0 ? '+' : (pct < 0 ? '-' : '');
+   percentChange = `${pctSign}${Math.abs(Math.round(pct))}%`;
+}
+       
+       else if (prev === 0 && current === 0) {
            dollarChange = 'N/A';
            percentChange = 'N/A';
        }
