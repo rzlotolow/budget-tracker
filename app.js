@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, orderBy, getDocs, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, orderBy, getDocs, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 function formatMoney(amount) {
    return parseFloat(amount).toFixed(2);
@@ -45,6 +45,7 @@ onAuthStateChanged(auth, (user) => {
 function initApp() {
    setupTabs();
    setupTransactionForm();
+   setupEditModal();
    loadCategories();
    loadCategorySettings();
    loadTransactions();
@@ -135,12 +136,87 @@ function setupTransactionForm() {
            setDefaultDate();
            categorySelect.value = '';
            newCategoryInput.style.display = 'none';
-           alert('Transaction added!');
        } catch (error) {
            alert('Error adding transaction: ' + error.message);
        }
    });
 }
+
+function setupEditModal() {
+   const modal = document.getElementById('edit-modal');
+   const form = document.getElementById('edit-transaction-form');
+   const cancelBtn = document.getElementById('cancel-edit-btn');
+   
+   cancelBtn.addEventListener('click', () => {
+       modal.style.display = 'none';
+   });
+   
+   modal.addEventListener('click', (e) => {
+       if (e.target === modal) {
+           modal.style.display = 'none';
+       }
+   });
+   
+   form.addEventListener('submit', async (e) => {
+       e.preventDefault();
+       
+       const transactionId = document.getElementById('edit-transaction-id').value;
+       const dateInput = document.getElementById('edit-transaction-date').value;
+       const date = new Date(dateInput + 'T00:00:00');
+       
+       const updates = {
+           date: date,
+           category: document.getElementById('edit-transaction-category').value,
+           place: document.getElementById('edit-transaction-place').value.trim(),
+           amount: parseFloat(document.getElementById('edit-transaction-amount').value) || 0,
+           person: document.getElementById('edit-transaction-person').value,
+           notes: document.getElementById('edit-transaction-notes').value.trim()
+       };
+       
+       try {
+           await updateDoc(doc(db, 'transactions', transactionId), updates);
+           modal.style.display = 'none';
+       } catch (error) {
+           alert('Error updating transaction: ' + error.message);
+       }
+   });
+}
+
+window.editTransaction = async function(id) {
+   const modal = document.getElementById('edit-modal');
+   const categorySelect = document.getElementById('edit-transaction-category');
+   
+   try {
+       const docSnap = await getDoc(doc(db, 'transactions', id));
+       if (!docSnap.exists()) {
+           alert('Transaction not found');
+           return;
+       }
+       
+       const transaction = docSnap.data();
+       const date = transaction.date.toDate();
+       
+       document.getElementById('edit-transaction-id').value = id;
+       document.getElementById('edit-transaction-date').value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+       document.getElementById('edit-transaction-place').value = transaction.place;
+       document.getElementById('edit-transaction-amount').value = transaction.amount;
+       document.getElementById('edit-transaction-person').value = transaction.person;
+       document.getElementById('edit-transaction-notes').value = transaction.notes || '';
+       
+       categorySelect.innerHTML = '';
+       categories.forEach(cat => {
+           const option = document.createElement('option');
+           option.value = cat;
+           option.textContent = cat;
+           categorySelect.appendChild(option);
+       });
+       categorySelect.value = transaction.category;
+       
+       modal.style.display = 'block';
+   } catch (error) {
+       alert('Error loading transaction: ' + error.message);
+   }
+};
 
 async function addCategory(category) {
    try {
@@ -325,6 +401,7 @@ function renderHistoryForMonth(selectedMonth) {
            html += `</div>`;
            html += `<div class="transaction-right">`;
            html += `<div class="transaction-amount">$${formatMoney(t.amount)}</div>`;
+           html += `<button class="delete-btn" style="background: #2196F3; margin-right: 0.5rem;" onclick="editTransaction('${t.id}')">Edit</button>`;
            html += `<button class="delete-btn" onclick="deleteTransaction('${t.id}')">Delete</button>`;
            html += `</div>`;
            html += `</div>`;
@@ -368,6 +445,7 @@ function calculate6MonthAvg(category) {
    const total = Object.values(monthTotals).reduce((sum, val) => sum + val, 0);
    return total / completedMonths;
 }
+
 
 
 function renderBudget() {
