@@ -648,27 +648,50 @@ function renderTrends() {
        prevByCategory[t.category] = (prevByCategory[t.category] || 0) + t.amount;
    });
    
-   const allCategories = new Set([...Object.keys(currentByCategory), ...Object.keys(prevByCategory)]);
-   const changes = [];
+   let html = '<div class="trend-section">';
+   html += '<h2>Month-over-Month Changes</h2>';
+   html += `<p style="color: #666; margin-bottom: 1rem;">${formatMonthYear(currentMonth)} vs ${formatMonthYear(prevMonth)}</p>`;
    
-   allCategories.forEach(cat => {
-       const current = currentByCategory[cat] || 0;
-       const prev = prevByCategory[cat] || 0;
-       const change = current - prev;
+   html += '<div style="overflow-x: auto;">';
+   html += '<table class="budget-table"><thead><tr>';
+   html += '<th>Category</th>';
+   html += `<th>${formatMonthYear(prevMonth)}</th>`;
+   html += `<th>${formatMonthYear(currentMonth)}</th>`;
+   html += '<th>MoM $ Change</th>';
+   html += '<th>MoM % Change</th>';
+   html += '</tr></thead><tbody>';
+   
+   categories.sort().forEach(category => {
+       const prev = prevByCategory[category] || 0;
+       const current = currentByCategory[category] || 0;
        
-       if (change !== 0) {
-           let percentChange = 'N/A';
-           if (prev === 0 && current > 0) {
-               percentChange = 'N/A';
-           } else if (prev > 0) {
-               percentChange = Math.round((change / prev) * 100);
-           }
+       let dollarChange = 'N/A';
+       let percentChange = 'N/A';
+       
+       if (prev > 0 && current > 0) {
+           const change = current - prev;
+           const sign = change >= 0 ? '+' : '';
+           dollarChange = `${sign}$${formatMoney(Math.abs(change))}`;
            
-           changes.push({ category: cat, change, current, prev, percentChange });
+           const pct = ((change / prev) * 100);
+           percentChange = `${sign}${Math.round(pct)}%`;
+       } else if (prev === 0 && current === 0) {
+           dollarChange = 'N/A';
+           percentChange = 'N/A';
        }
+       
+       html += '<tr>';
+       html += `<td>${category}</td>`;
+       html += `<td>$${formatMoney(prev)}</td>`;
+       html += `<td>$${formatMoney(current)}</td>`;
+       html += `<td>${dollarChange}</td>`;
+       html += `<td>${percentChange}</td>`;
+       html += '</tr>';
    });
    
-   changes.sort((a, b) => a.category.localeCompare(b.category));
+   html += '</tbody></table>';
+   html += '</div>';
+   html += '</div>';
    
    const filteredTransactions = transactions.filter(t => {
        const d = t.date.toDate();
@@ -721,26 +744,6 @@ function renderTrends() {
        reaganExpensePercent = 100 - rogerExpensePercent;
    }
    
-   let html = '<div class="trend-section">';
-   html += '<h2>Month-over-Month Changes</h2>';
-   html += `<p style="color: #666; margin-bottom: 1rem;">${formatMonthYear(currentMonth)} vs ${formatMonthYear(prevMonth)}</p>`;
-   
-   if (changes.length > 0) {
-       changes.forEach(item => {
-           const sign = item.change > 0 ? '+' : '';
-           const colorClass = item.change > 0 ? 'trend-increase' : 'trend-decrease';
-           const percentStr = item.percentChange === 'N/A' ? 'N/A' : `${sign}${item.percentChange}% MoM`;
-           
-           html += `<div class="trend-item">`;
-           html += `<span class="trend-label">${item.category}:</span>`;
-           html += `<span class="trend-value ${colorClass}">${sign}$${formatMoney(Math.abs(item.change))} ($${formatMoney(item.prev)} → $${formatMoney(item.current)}) (${percentStr})</span>`;
-           html += `</div>`;
-       });
-   } else {
-       html += '<p>No changes between these months</p>';
-   }
-   html += '</div>';
-   
    html += '<div class="trend-section">';
    html += '<h2>Financial Summary</h2>';
    html += '<div style="margin-bottom: 1rem;">';
@@ -753,7 +756,7 @@ function renderTrends() {
    html += `<div class="trend-item"><span class="trend-label">Total Income</span><span class="trend-value">$${formatMoney(totalIncome)}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Total Expenses</span><span class="trend-value">$${formatMoney(totalExpenses)}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Total Savings</span><span class="trend-value">$${formatMoney(totalSavings)}</span></div>`;
-   html += `<div class="trend-item"><span class="trend-label">Net (Income - Expenses)</span><span class="trend-value ${totalIncome - totalExpenses >= 0 ? 'trend-decrease' : 'trend-increase'}">$${formatMoney(totalIncome - totalExpenses)}</span></div>`;
+   html += `<div class="trend-item"><span class="trend-label">Net (Income - Expenses)</span><span class="trend-value">$${formatMoney(totalIncome - totalExpenses)}</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerIncomePercent}% of Income</span><span class="trend-label">Raegan: ${reaganIncomePercent}% of Income</span></div>`;
    html += `<div class="trend-item"><span class="trend-label">Roger: ${rogerExpensePercent}% of Expenses</span><span class="trend-label">Raegan: ${reaganExpensePercent}% of Expenses</span></div>`;
    html += '</div>';
