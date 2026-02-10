@@ -54,7 +54,7 @@
                <input type="text" id="transaction-place" required>
 
                <label>Amount</label>
-               <input type="number" id="transaction-amount" step=".01" value="0" required>
+               <input type="number" id="transaction-amount" step="0.01" value="0" required>
 
                <label>Person</label>
                <select id="transaction-person" required>
@@ -95,6 +95,42 @@
 
        <div id="trends-tab" class="tab-content">
            <div id="trends-content"></div>
+       </div>
+   </div>
+
+   <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 1rem; overflow-y: auto;">
+       <div style="background: white; max-width: 600px; margin: 2rem auto; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+           <h2 style="margin-bottom: 1.5rem;">Edit Transaction</h2>
+           <form id="edit-transaction-form">
+               <input type="hidden" id="edit-transaction-id">
+               
+               <label>Date</label>
+               <input type="date" id="edit-transaction-date" required>
+
+               <label>Category</label>
+               <select id="edit-transaction-category" required></select>
+
+               <label>Place</label>
+               <input type="text" id="edit-transaction-place" required>
+
+               <label>Amount</label>
+               <input type="number" id="edit-transaction-amount" step="0.01" required>
+
+               <label>Person</label>
+               <select id="edit-transaction-person" required>
+                   <option value="Roger">Roger</option>
+                   <option value="Raegan">Raegan</option>
+                   <option value="Both">Both</option>
+               </select>
+
+               <label>Notes (Optional)</label>
+               <textarea id="edit-transaction-notes"></textarea>
+
+               <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                   <button type="submit" style="flex: 1;">Save Changes</button>
+                   <button type="button" id="cancel-edit-btn" style="flex: 1; background: #999;">Cancel</button>
+               </div>
+           </form>
        </div>
    </div>
 
